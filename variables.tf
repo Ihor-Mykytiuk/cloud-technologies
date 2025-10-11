@@ -8,5 +8,22 @@ variable "resource_group_name" {
 variable "location" {
   description = "The Azure region where all resources will be deployed"
   type        = string
-  default     = "East US"
+  default     = "West US 2"
+}
+
+variable "vm_size" {
+  type    = string
+  default = "Standard_D2s_v3"
+}
+
+variable "admin_username" {
+  description = "Administrator name for virtual machines"
+  type        = string
+  default     = "localadmin"
+}
+
+variable "admin_password" {
+  description = ""
+  type        = string
+  sensitive   = true
 }
