@@ -22,3 +22,8 @@ output "storage_account_name" {
   description = "The name of the created test storage account."
   value       = azurerm_storage_account.testsa.name
 }
+
+output "management_lock_id" {
+  description = "The ID of the management lock."
+  value       = azurerm_management_lock.rg_lock.id
+}

@@ -62,3 +62,10 @@ resource "azurerm_storage_account" "testsa" {
   account_tier             = "Standard"
   account_replication_type = "LRS"
 }
+
+resource "azurerm_management_lock" "rg_lock" {
+  name       = var.lock_name
+  scope      = azurerm_resource_group.rg.id
+  lock_level = var.lock_level
+  notes      = var.lock_notes
+}

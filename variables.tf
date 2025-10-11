@@ -17,3 +17,21 @@ variable "tags" {
     "Cost Center" = "000"
   }
 }
+
+variable "lock_name" {
+  description = "Name for the management lock"
+  type        = string
+  default     = "rg-lock-delete"
+}
+
+variable "lock_level" {
+  description = "The level of the lock"
+  type        = string
+  default     = "CanNotDelete"
+}
+
+variable "lock_notes" {
+  description = "Notes for the management lock"
+  type        = string
+  default     = "Lock to prevent accidental deletion of the resource group."
+}
