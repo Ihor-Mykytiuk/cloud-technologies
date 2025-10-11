@@ -9,3 +9,12 @@ variable "location" {
   type        = string
   default     = "East US"
 }
+
+variable "managed_disks" {
+  description = "A map of managed disks to create"
+  type = map(object({
+    name = string
+    size = number
+    sku  = string
+  }))
+}
