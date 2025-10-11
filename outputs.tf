@@ -27,3 +27,13 @@ output "manufacturing_vm_private_ip" {
   description = "The private IP address of the ManufacturingVM"
   value       = azurerm_network_interface.mfg_vm_ni.private_ip_address
 }
+
+output "vnet_peering_id_core_to_mfg" {
+  description = "The ID of the VNet peering from CoreServicesVnet to ManufacturingVnet"
+  value       = azurerm_virtual_network_peering.core_to_mfg.id
+}
+
+output "vnet_peering_id_mfg_to_core" {
+  description = "The ID of the VNet peering from ManufacturingVnet to CoreServicesVnet"
+  value       = azurerm_virtual_network_peering.mfg_to_core.id
+}
