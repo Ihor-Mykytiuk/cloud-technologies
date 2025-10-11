@@ -20,3 +20,27 @@ variable "virtual_networks" {
     }))
   }))
 }
+
+variable "asg_name" {
+  description = "Name for the Application Security Group"
+  type        = string
+  default     = "asg-web"
+}
+
+variable "nsg_name" {
+  description = "Name for the Network Security Group"
+  type        = string
+  default     = "myNSGSecure"
+}
+
+variable "nsg_target_vnet_name" {
+  description = "The name of the VNet to associate the NSG with."
+  type        = string
+  default     = "CoreServicesVnet"
+}
+
+variable "nsg_target_subnet_name" {
+  description = "The name of the Subnet to associate the NSG with."
+  type        = string
+  default     = "SharedServicesSubnet"
+}
