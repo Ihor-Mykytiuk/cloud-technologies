@@ -44,3 +44,43 @@ variable "nsg_target_subnet_name" {
   type        = string
   default     = "SharedServicesSubnet"
 }
+
+variable "public_dns_zone_name" {
+  description = "Name for the public DNS zone"
+  type        = string
+  default     = "contoso-im-az104.com"
+}
+
+variable "private_dns_zone_name" {
+  description = "Name for the private DNS zone"
+  type        = string
+  default     = "private.contoso-az104.com"
+}
+
+variable "dns_link_target_vnet_name" {
+  description = "The name of the VNet to link the Private DNS Zone to."
+  type        = string
+  default     = "ManufacturingVnet"
+}
+
+variable "public_dns_a_records" {
+  description = "A map of A records for the public DNS zone."
+  type = map(object({
+    ttl     = number
+    records = list(string)
+  }))
+}
+
+variable "private_dns_a_records" {
+  description = "A map of A records for the private DNS zone."
+  type = map(object({
+    ttl     = number
+    records = list(string)
+  }))
+}
+
+variable "private_dns_vnet_link_name" {
+  description = "Name for the private DNS zone virtual network link."
+  type        = string
+  default     = "manufacturing-link"
+}
