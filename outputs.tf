@@ -37,3 +37,8 @@ output "vnet_peering_id_mfg_to_core" {
   description = "The ID of the VNet peering from ManufacturingVnet to CoreServicesVnet"
   value       = azurerm_virtual_network_peering.mfg_to_core.id
 }
+
+output "route_table_id" {
+  description = "The ID of the rt-CoreServices route table"
+  value       = azurerm_route_table.core_rt.id
+}
