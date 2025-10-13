@@ -25,3 +25,8 @@ output "virtual_machine_private_ips" {
     vm2 = azurerm_network_interface.nic2.private_ip_address
   }
 }
+
+output "load_balancer_public_ip" {
+  description = "Public IP address of the Load Balancer"
+  value       = azurerm_public_ip.lb_pip.ip_address
+}

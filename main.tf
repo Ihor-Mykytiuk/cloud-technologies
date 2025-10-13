@@ -216,3 +216,65 @@ resource "azurerm_virtual_machine_extension" "vm2_ext" {
     commandToExecute = "powershell.exe Install-WindowsFeature -name Web-Server && powershell.exe remove-item 'C:\\inetpub\\wwwroot\\iisstart.htm' && powershell.exe Add-Content -Path 'C:\\inetpub\\wwwroot\\iisstart.htm' -Value ('Hello World from ' + $env:computername) && powershell.exe New-Item -Path 'c:\\inetpub\\wwwroot' -Name 'video' -Itemtype 'Directory' && powershell.exe New-Item -Path 'c:\\inetpub\\wwwroot\\video\\' -Name 'iisstart.htm' -ItemType 'file' && powershell.exe Add-Content -Path 'C:\\inetpub\\wwwroot\\video\\iisstart.htm' -Value ('Video from: ' + $env:computername)"
   })
 }
+
+resource "azurerm_public_ip" "lb_pip" {
+  name                = "az104-lbpip"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  sku                 = "Standard"
+  allocation_method   = "Static"
+}
+
+resource "azurerm_lb" "lb" {
+  name                = "az104-lb"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  sku                 = "Standard"
+
+  frontend_ip_configuration {
+    name                 = "az104-fe"
+    public_ip_address_id = azurerm_public_ip.lb_pip.id
+  }
+}
+
+resource "azurerm_lb_backend_address_pool" "be_pool" {
+  name            = "az104-be"
+  loadbalancer_id = azurerm_lb.lb.id
+}
+
+resource "azurerm_network_interface_backend_address_pool_association" "nic0_lb_assoc" {
+  network_interface_id    = azurerm_network_interface.nic0.id
+  ip_configuration_name   = "internal"
+  backend_address_pool_id = azurerm_lb_backend_address_pool.be_pool.id
+}
+
+resource "azurerm_network_interface_backend_address_pool_association" "nic1_lb_assoc" {
+  network_interface_id    = azurerm_network_interface.nic1.id
+  ip_configuration_name   = "internal"
+  backend_address_pool_id = azurerm_lb_backend_address_pool.be_pool.id
+}
+
+resource "azurerm_lb_probe" "probe" {
+  name                = "az104-hp"
+  loadbalancer_id     = azurerm_lb.lb.id
+  protocol            = "Tcp"
+  port                = 80
+  interval_in_seconds = 5
+}
+
+resource "azurerm_lb_rule" "lb_rule" {
+  name                           = "az104-lbrule"
+  loadbalancer_id                = azurerm_lb.lb.id
+  protocol                       = "Tcp"
+  frontend_port                  = 80
+  backend_port                   = 80
+  backend_address_pool_ids       = [azurerm_lb_backend_address_pool.be_pool.id]
+  probe_id                       = azurerm_lb_probe.probe.id
+  frontend_ip_configuration_name = "az104-fe"
+
+  load_distribution         = "Default"
+  idle_timeout_in_minutes = 4
+  tcp_reset_enabled         = false
+  floating_ip_enabled       = false
+  disable_outbound_snat     = false
+}
