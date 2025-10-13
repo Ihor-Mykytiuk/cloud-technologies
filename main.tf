@@ -14,7 +14,7 @@ data "http" "my_public_ip" {
 }
 
 resource "azurerm_storage_account" "storage" {
-  name                     = "az104-lab7${random_string.storage_suffix.result}"
+  name                     = "az104lab7${random_string.storage_suffix.result}"
   resource_group_name      = azurerm_resource_group.rg.name
   location                 = azurerm_resource_group.rg.location
   account_tier             = "Standard"
@@ -45,5 +45,53 @@ resource "azurerm_storage_management_policy" "lifecycle_policy" {
         tier_to_cool_after_days_since_modification_greater_than = 30
       }
     }
+  }
+}
+
+resource "azurerm_storage_container" "data_container" {
+  name                  = "data"
+  storage_account_id = azurerm_storage_account.storage.id
+  container_access_type = "private"
+}
+
+resource "azurerm_storage_container_immutability_policy" "immutability_policy" {
+  storage_container_resource_manager_id = azurerm_storage_container.data_container.id
+  immutability_period_in_days = 180
+}
+
+resource "time_static" "today" {
+}
+
+data "azurerm_storage_account_sas" "sas_token" {
+  connection_string = azurerm_storage_account.storage.primary_connection_string
+  https_only        = true
+
+  resource_types {
+    object    = true
+    service   = false
+    container = false
+  }
+
+  services {
+    blob  = true
+    queue = false
+    table = false
+    file  = false
+  }
+
+  start  = timeadd(time_static.today.rfc3339, "-24h")
+  expiry = timeadd(time_static.today.rfc3339, "24h")
+
+  permissions {
+    read    = true
+    write   = false
+    delete  = false
+    list    = false
+    add     = false
+    create  = false
+    update  = false
+    process = false
+    tag     = false
+    filter  = false
   }
 }
