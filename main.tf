@@ -278,3 +278,125 @@ resource "azurerm_lb_rule" "lb_rule" {
   floating_ip_enabled       = false
   disable_outbound_snat     = false
 }
+
+locals {
+  gateway_ip_configuration_name = "az104-gwipc"
+  frontend_port_name = "az104-feport"
+  frontend_ip_configuration_name = "az104-feipc"
+  backend_address_pool_name_default = "az104-appgwbe"
+  backend_address_pool_name_image = "az104-imagebe"
+  backend_address_pool_name_video = "az104-videobe"
+  backend_http_settings_name = "az104-http"
+  listener_name = "az104-listener"
+  request_routing_rule_name = "az104-gwrule"
+  url_path_map_name = "az104-pathmap"
+}
+
+resource "azurerm_subnet" "appgw_subnet" {
+  name                 = "subnet-appgw"
+  resource_group_name  = azurerm_resource_group.rg.name
+  virtual_network_name = azurerm_virtual_network.vnet.name
+  address_prefixes     = ["10.60.3.224/27"]
+}
+
+resource "azurerm_public_ip" "appgw_pip" {
+  name                = "az104-gwpip"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  sku                 = "Standard"
+  allocation_method   = "Static"
+}
+
+resource "azurerm_application_gateway" "appgw" {
+  name                = "az104-appgw"
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+
+  sku {
+    name     = "Standard_v2"
+    tier     = "Standard_v2"
+    capacity = 2
+  }
+
+  gateway_ip_configuration {
+    name      = local.gateway_ip_configuration_name
+    subnet_id = azurerm_subnet.appgw_subnet.id
+  }
+
+  frontend_port {
+    name = local.frontend_port_name
+    port = 80
+  }
+
+  frontend_ip_configuration {
+    name                 = local.frontend_ip_configuration_name
+    public_ip_address_id = azurerm_public_ip.appgw_pip.id
+  }
+
+
+  backend_address_pool {
+    name         = local.backend_address_pool_name_default
+    ip_addresses = [azurerm_network_interface.nic1.private_ip_address, azurerm_network_interface.nic2.private_ip_address]
+  }
+
+  backend_address_pool {
+    name         = local.backend_address_pool_name_image
+    ip_addresses = [azurerm_network_interface.nic1.private_ip_address]
+  }
+
+  backend_address_pool {
+    name         = local.backend_address_pool_name_video
+    ip_addresses = [azurerm_network_interface.nic2.private_ip_address]
+  }
+
+  http_listener {
+    name                           = local.listener_name
+    frontend_ip_configuration_name = local.frontend_ip_configuration_name
+    frontend_port_name             = local.frontend_port_name
+    protocol                       = "Http"
+  }
+
+  backend_http_settings {
+    name                  = local.backend_http_settings_name
+    cookie_based_affinity = "Disabled"
+    port                  = 80
+    protocol              = "Http"
+    request_timeout       = 20
+  }
+
+  request_routing_rule {
+    name                       = local.request_routing_rule_name
+    rule_type                  = "PathBasedRouting"
+    priority                   = 10
+    http_listener_name         = local.listener_name
+    url_path_map_name          = local.url_path_map_name
+    backend_address_pool_name  = local.backend_address_pool_name_default
+    backend_http_settings_name = local.backend_http_settings_name
+  }
+
+  url_path_map {
+    name                               = local.url_path_map_name
+    default_backend_address_pool_name  = local.backend_address_pool_name_default
+    default_backend_http_settings_name = local.backend_http_settings_name
+
+    path_rule {
+      name                       = "images"
+      paths                      = ["/image/*"]
+      backend_address_pool_name  = local.backend_address_pool_name_image
+      backend_http_settings_name = local.backend_http_settings_name
+    }
+
+    path_rule {
+      name                       = "videos"
+      paths                      = ["/video/*"]
+      backend_address_pool_name  = local.backend_address_pool_name_video
+      backend_http_settings_name = local.backend_http_settings_name
+    }
+  }
+
+  depends_on = [
+    azurerm_windows_virtual_machine.vm0,
+    azurerm_windows_virtual_machine.vm1,
+    azurerm_windows_virtual_machine.vm2
+  ]
+}
