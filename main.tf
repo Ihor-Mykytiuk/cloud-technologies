@@ -23,9 +23,9 @@ resource "azurerm_storage_account" "storage" {
 
   network_rules {
     default_action             = "Deny"
-    ip_rules                   = [chomp(data.http.my_public_ip.response_body)]
+    ip_rules                   = []
     bypass                     = ["AzureServices"]
-    virtual_network_subnet_ids = []
+    virtual_network_subnet_ids = [azurerm_subnet.subnet.id]
   }
 }
 
@@ -94,4 +94,27 @@ data "azurerm_storage_account_sas" "sas_token" {
     tag     = false
     filter  = false
   }
+}
+
+
+resource "azurerm_storage_share" "fs" {
+  name                 = "share1"
+  storage_account_id = azurerm_storage_account.storage.id
+  access_tier          = "TransactionOptimized"
+  quota                = 1
+}
+
+resource "azurerm_virtual_network" "vnet1" {
+  name                = "vnet1"
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+  address_space       = ["10.70.0.0/16"]
+}
+
+resource "azurerm_subnet" "subnet" {
+  name                 = "default"
+  resource_group_name  = azurerm_resource_group.rg.name
+  virtual_network_name = azurerm_virtual_network.vnet1.name
+  address_prefixes     = ["10.70.1.0/24"]
+  service_endpoints    = ["Microsoft.Storage"]
 }
