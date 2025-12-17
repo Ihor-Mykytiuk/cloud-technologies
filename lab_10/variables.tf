@@ -7,13 +7,13 @@ variable "resource_group_name" {
 variable "location" {
   description = "The Azure region where all resources will be deployed"
   type        = string
-  default     = "North Europe"
+  default     = "Central US"
 }
 
 variable "secondary_location" {
   description = "The Azure region for disaster recovery"
   type        = string
-  default     = "West Europe"
+  default     = "West US"
 }
 
 variable "vm_size" {

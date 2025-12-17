@@ -1,6 +1,3 @@
-# --- TASK 1: Provision Infrastructure (VM & Network) ---
-# Розгортання мережі, підмережі, IP, NSG та віртуальної машини
-
 resource "azurerm_resource_group" "rg" {
   name     = var.resource_group_name
   location = var.location
@@ -29,10 +26,6 @@ resource "azurerm_subnet" "subnet" {
   resource_group_name  = azurerm_resource_group.rg.name
   virtual_network_name = azurerm_virtual_network.vnet.name
   address_prefixes     = ["10.0.0.0/26"]
-  
-  depends_on = [
-    azurerm_virtual_network.vnet
-  ]
 }
 
 resource "azurerm_public_ip" "pip" {
@@ -72,11 +65,6 @@ resource "azurerm_network_interface" "nic" {
     private_ip_address_allocation = "Dynamic"
     public_ip_address_id          = azurerm_public_ip.pip.id
   }
-  depends_on = [ 
-    azurerm_virtual_network.vnet,
-    azurerm_subnet.subnet,
-    azurerm_network_security_group.nsg
-   ]
 }
 
 resource "azurerm_network_interface_security_group_association" "nic_nsg_assoc" {
@@ -106,9 +94,6 @@ resource "azurerm_windows_virtual_machine" "vm" {
   }
 }
 
-# --- TASK 2: Create Recovery Services Vault (Primary) ---
-# Створення основного сховища в Region 1
-
 resource "azurerm_recovery_services_vault" "rsv" {
   name                = local.rsv_name
   location            = azurerm_resource_group.rg.location
@@ -118,9 +103,6 @@ resource "azurerm_recovery_services_vault" "rsv" {
   storage_mode_type   = "GeoRedundant"
   soft_delete_enabled = true
 }
-
-# --- TASK 3: Configure Azure VM Backup ---
-# Створення політики та увімкнення бекапу
 
 resource "azurerm_backup_policy_vm" "backup_policy" {
   name                = local.backup_policy_name
@@ -139,10 +121,6 @@ resource "azurerm_backup_policy_vm" "backup_policy" {
   }
 
   instant_restore_retention_days = 2
-
-  depends_on = [
-    azurerm_recovery_services_vault.rsv
-  ]
 }
 
 resource "azurerm_backup_protected_vm" "vm_backup" {
@@ -150,15 +128,7 @@ resource "azurerm_backup_protected_vm" "vm_backup" {
   recovery_vault_name = azurerm_recovery_services_vault.rsv.name
   source_vm_id        = azurerm_windows_virtual_machine.vm.id
   backup_policy_id    = azurerm_backup_policy_vm.backup_policy.id
-
-  depends_on = [
-    azurerm_windows_virtual_machine.vm,
-    azurerm_backup_policy_vm.backup_policy
-  ]
 }
-
-# --- TASK 4: Monitor Azure Backup ---
-# Створення Storage Account та діагностичних налаштувань
 
 resource "random_string" "storage_suffix" {
   length  = 8
@@ -195,10 +165,6 @@ resource "azurerm_monitor_diagnostic_setting" "rsv_diag" {
   }
 }
 
-# --- TASK 5: Enable Virtual Machine Replication (PREPARATION) ---
-# Підготовка ресурсів для реплікації (RG та Vault у другому регіоні).
-# Саму реплікацію (Fabrics, Containers, Policy) закоментовано для ручного налаштування.
-
 locals {
   rg_secondary_name        = "az104-rg-region2"
   rsv_secondary_name       = "az104-rsv-region2"
@@ -212,8 +178,7 @@ locals {
   network_mapping_name     = "network_mapping"
 }
 
-# ЦІ ДВА РЕСУРСИ ЗАЛИШАЄМО АКТИВНИМИ! 
-# Вони потрібні, щоб при ручному налаштуванні ти міг вибрати готовий Vault.
+
 resource "azurerm_resource_group" "rg_secondary" {
   name     = local.rg_secondary_name
   location = var.secondary_location
@@ -226,18 +191,12 @@ resource "azurerm_recovery_services_vault" "rsv_secondary" {
   sku                 = "Standard"
 }
 
-# --- КОД ДЛЯ АВТОМАТИЧНОЇ РЕПЛІКАЦІЇ (ЗАКЕМЕНТОВАНО) ---
-# Цю частину ти виконаєш вручну на порталі Azure (VM -> Disaster Recovery)
 
-/*
 resource "azurerm_site_recovery_fabric" "primary_fabric" {
   name                = local.primary_fabric_name
   resource_group_name = azurerm_resource_group.rg_secondary.name
   recovery_vault_name = azurerm_recovery_services_vault.rsv_secondary.name
   location            = azurerm_resource_group.rg.location
-  depends_on = [
-    azurerm_recovery_services_vault.rsv_secondary
-  ]
 }
 
 resource "azurerm_site_recovery_fabric" "secondary_fabric" {
@@ -245,10 +204,6 @@ resource "azurerm_site_recovery_fabric" "secondary_fabric" {
   resource_group_name = azurerm_resource_group.rg_secondary.name
   recovery_vault_name = azurerm_recovery_services_vault.rsv_secondary.name
   location            = azurerm_resource_group.rg_secondary.location
-
-  depends_on = [
-    azurerm_recovery_services_vault.rsv_secondary
-  ]
 }
 
 resource "azurerm_site_recovery_protection_container" "primary_container" {
@@ -256,11 +211,6 @@ resource "azurerm_site_recovery_protection_container" "primary_container" {
   resource_group_name  = azurerm_resource_group.rg_secondary.name
   recovery_vault_name  = azurerm_recovery_services_vault.rsv_secondary.name
   recovery_fabric_name = azurerm_site_recovery_fabric.primary_fabric.name
-
-  depends_on = [
-    azurerm_site_recovery_fabric.primary_fabric,
-    azurerm_recovery_services_vault.rsv_secondary
-  ]
 }
 
 resource "azurerm_site_recovery_protection_container" "secondary_container" {
@@ -268,11 +218,6 @@ resource "azurerm_site_recovery_protection_container" "secondary_container" {
   resource_group_name  = azurerm_resource_group.rg_secondary.name
   recovery_vault_name  = azurerm_recovery_services_vault.rsv_secondary.name
   recovery_fabric_name = azurerm_site_recovery_fabric.secondary_fabric.name
-
-  depends_on = [
-    azurerm_site_recovery_fabric.secondary_fabric,
-    azurerm_recovery_services_vault.rsv_secondary
-  ]
 }
 
 resource "azurerm_site_recovery_replication_policy" "replication_policy" {
@@ -281,11 +226,6 @@ resource "azurerm_site_recovery_replication_policy" "replication_policy" {
   recovery_vault_name                                  = azurerm_recovery_services_vault.rsv_secondary.name
   recovery_point_retention_in_minutes                  = 24 * 60
   application_consistent_snapshot_frequency_in_minutes = 4 * 60
-
-  depends_on = [
-    azurerm_site_recovery_protection_container.primary_container,
-    azurerm_recovery_services_vault.rsv_secondary
-  ]
 }
 
 resource "azurerm_site_recovery_protection_container_mapping" "container_mapping" {
@@ -296,13 +236,6 @@ resource "azurerm_site_recovery_protection_container_mapping" "container_mapping
   recovery_source_protection_container_name = azurerm_site_recovery_protection_container.primary_container.name
   recovery_target_protection_container_id   = azurerm_site_recovery_protection_container.secondary_container.id
   recovery_replication_policy_id            = azurerm_site_recovery_replication_policy.replication_policy.id
-  depends_on = [
-    azurerm_recovery_services_vault.rsv_secondary,
-    azurerm_site_recovery_fabric.primary_fabric,
-    azurerm_site_recovery_protection_container.primary_container,
-    azurerm_site_recovery_protection_container.secondary_container,
-    azurerm_site_recovery_replication_policy.replication_policy
-  ]
 }
 
 resource "azurerm_virtual_network" "vnet_secondary" {
@@ -320,14 +253,6 @@ resource "azurerm_site_recovery_network_mapping" "network_mapping" {
   target_recovery_fabric_name = azurerm_site_recovery_fabric.secondary_fabric.name
   source_network_id           = azurerm_virtual_network.vnet.id
   target_network_id           = azurerm_virtual_network.vnet_secondary.id
-
-  depends_on = [
-    azurerm_recovery_services_vault.rsv_secondary,
-    azurerm_site_recovery_fabric.primary_fabric,
-    azurerm_site_recovery_fabric.secondary_fabric,
-    azurerm_virtual_network.vnet,
-    azurerm_virtual_network.vnet_secondary,
-  ]
 }
 
 resource "azurerm_site_recovery_replicated_vm" "replicated_vm" {
@@ -353,18 +278,4 @@ resource "azurerm_site_recovery_replicated_vm" "replicated_vm" {
 
   target_network_id = azurerm_virtual_network.vnet_secondary.id
 
-  depends_on = [
-    azurerm_recovery_services_vault.rsv_secondary,
-    azurerm_site_recovery_fabric.primary_fabric,
-    azurerm_site_recovery_fabric.secondary_fabric,
-    azurerm_site_recovery_protection_container.primary_container,
-    azurerm_site_recovery_protection_container.secondary_container,
-    azurerm_site_recovery_replication_policy.replication_policy,
-    azurerm_site_recovery_network_mapping.network_mapping,
-    azurerm_site_recovery_protection_container_mapping.container_mapping,
-    azurerm_windows_virtual_machine.vm,
-    azurerm_virtual_network.vnet_secondary,
-    azurerm_storage_account.sa_diag
-  ]
 }
-*/
